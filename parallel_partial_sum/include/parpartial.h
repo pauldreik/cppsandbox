@@ -17,7 +17,7 @@
 namespace whatever {
 
 struct Options {
-  std::size_t Nthreads = 4;
+  std::size_t Nthreads = std::thread::hardware_concurrency();
   bool execute_in_threads = false;
 };
 
