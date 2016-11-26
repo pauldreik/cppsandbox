@@ -68,8 +68,8 @@ void runCase(const std::size_t Ndata, const std::size_t Nthreads,
 
   // ns per element
   const auto ns_per_element = toSeconds(t2 - t1) * 1e9 / Nvaluesrun;
-  std::cout << algo << '\t' << Nruns << '\t' << Nthreads << '\t' << Ndata
-            << '\t' << ns_per_element << '\n';
+  std::cout << algo << ',' << Nruns << ',' << Nthreads << ',' << Ndata << ','
+            << ns_per_element << '\n';
   std::cout.flush();
 }
 
@@ -88,7 +88,7 @@ int main() {
   auto output = input;
 
   // Start of benchmarking
-  std::cout << "algo\tnruns\tnthreads\tndata\tnsperelement\n";
+  std::cout << "algo,nruns,nthreads,ndata,nsperelement\n";
   for (const auto algo : {1, 2, 3, 4}) {
     for (const auto Nblock : {100'000, 1'000'000, 10'000'000, 20'000'000,
                               40'000'000, 160'000'000}) {
