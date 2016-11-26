@@ -350,7 +350,7 @@ OutputIt par_partial_sum_async(InputIt first, InputIt last, OutputIt d_first,
                              d_first + (ranges.at(i) - first),
                              starting_values.at(i));
     };
-    tasks.at(i) = std::async(task);
+    tasks.at(i) = std::async(std::launch::async, task);
   }
   for (std::size_t i = 0; i < Nblocks; ++i) {
     tasks.at(i).get();
