@@ -12,7 +12,9 @@ enable_testing()
 #SET(SANITIZEOPTS -fsanitize=undefined)# approx 2x slowdown
 #SET(PROFILEOPTS  -pg)
 #SET(FASTMATHOPTS -ffast-math)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -std=c++14 -g ${PROFILEOPTS} ${SANITIZEOPTS} ${FASTMATHOPTS}")
+#we need openmp to use gnu parallel stl
+set(OPENMP  -fopenmp)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -std=c++14 -g ${PROFILEOPTS} ${SANITIZEOPTS} ${FASTMATHOPTS} ${OPENMP}")
 
 #file(GLOB SRC "*.h" "*.cpp")
 set(SRC main.cpp unittest_unsignedint.cpp)
