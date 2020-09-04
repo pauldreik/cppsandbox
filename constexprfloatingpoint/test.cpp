@@ -82,3 +82,52 @@ BOOST_AUTO_TEST_CASE( plus_of_small_values) {
         }
     }
 }
+
+BOOST_AUTO_TEST_CASE (plus_of_weird_values) {
+    using F=Floating;
+    using L=std::numeric_limits<std::int64_t>;
+    const auto mantissas={L::min(),
+                          L::min()+1,L::min()+2,-2L,-1L,0L,1L,2L,L::max()-2,L::max()-1,L::max()};
+    const auto exps={-129,-128,-127,-66,-65,-64,-63,-62,-61,-60,
+                     -2,-1,0,1,2,60,61,62,63,64,65,66,127,128,129};
+    const auto zero=F::FromInt(0);
+    for(std::int64_t i1: mantissas) {
+        for(int exp1 : exps) {
+            const auto a=F::FromMantissaAndExp(i1,exp1);
+            if(!(a==a+zero)) {
+                std::abort();
+            }
+            if(!(zero==a+-a)) {
+                std::abort();
+            }
+            for(std::int64_t i2: mantissas) {
+                for(int exp2 : exps) {
+                    auto b=F::FromMantissaAndExp(i2,exp2);
+                    const auto aplusb=a+b;
+                    if(!(aplusb==b+a)) {
+                        std::abort();
+                    }
+                    if(a.isPositive() && b.isPositive() && !aplusb.isPositive())
+                        std::abort();
+                    if(a.isNegative() && b.isNegative() && !aplusb.isNegative())
+                        std::abort();
+
+                    //see if it is representable as ints, then verify with ordinary ints.
+                    if(a.ToInt().has_value() && b.ToInt().has_value() && aplusb.ToInt().has_value()) {
+                        //promote to a larger type to avoid UB
+                        __int128 a128=a.ToInt().value();
+                        __int128 b128=b.ToInt().value();
+                        __int128 aplusb128=aplusb.ToInt().value();
+                        //only check if precision could have been preserved
+                        __int128 exact_answer=a128+b128;
+                        if(a128>L::min() && b128>L::min() && exact_answer >L::min()&& exact_answer<=L::max())
+                            if((a128+b128)!=aplusb128)
+                                std::abort();
+                    }
+                    BOOST_TEST_CHECKPOINT("all good");
+                }
+            }
+        }
+    }
+    BOOST_CHECK("all good");
+}

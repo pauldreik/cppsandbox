@@ -174,11 +174,14 @@ public:
         auto absmantissa=getAbsMantissa();
         assert(absmantissa>>62==0b01L);
     }
-    friend constexpr Floating operator+(Floating a, Floating b);
+    friend constexpr Floating operator+(const Floating& a, const Floating& b);
     friend constexpr Floating operator*(Floating a, Floating b);
+    friend bool operator==(const Floating& a, const Floating& b) {
+        return a.mantissa==b.mantissa && a.exponent==b.exponent;
+    }
 };
 
-constexpr Floating operator+(const Floating a, const Floating b) {
+constexpr Floating operator+(const Floating& a, const Floating& b) {
     if(a.isZero()) return b;
     if(b.isZero()) return a;
 
@@ -201,9 +204,9 @@ constexpr Floating operator+(const Floating a, const Floating b) {
         Floating::Rep ret=0;
         if(__builtin_add_overflow(a.mantissa,toadd,&ret)) {
             //overflow. scale one bit away.
-            return Floating{a.mantissa/2 + toadd/2, a.exponent+1};
+            return Floating::FromMantissaAndExp(a.mantissa/2 + toadd/2, a.exponent+1);
         }
-        return Floating{ret,a.exponent};
+        return Floating::FromMantissaAndExp(ret,a.exponent);
     }
 
     //lazy. flip the order.
