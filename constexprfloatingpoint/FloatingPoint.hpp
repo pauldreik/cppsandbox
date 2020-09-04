@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cassert>
 #include <type_traits>
+#include <optional>
 
 namespace notinstd {
 // counts leading zeros. if x<0, counts leading zeros in -x.
@@ -21,30 +22,78 @@ int countl_zero(std::int64_t x) {
     // watch out for overflow here
     return countl_zero(-x);
 }
+int countr_zero(std::int64_t x) {
+    if(x==0) {
+        return 64;
+    }
+    if(x>0) {
+        if constexpr(std::is_same_v<std::int64_t,long>)
+        return __builtin_ctzl(x);
+        if constexpr(std::is_same_v<std::int64_t,long long>)
+        return __builtin_ctzll(x);
+    }
+    // watch out for overflow here
+    return countr_zero(-x);
+}
 }
 
 struct Floating {
     using Rep=std::int64_t;
+    // INT_MIN is forbidden
     Rep mantissa;
     int exponent;
     void print() const {
         std::cout<<mantissa<<'*'<<"2^"<<exponent<<'\n';
     }
-    constexpr static Floating FromMantissaAndExp(std::int64_t mantissa,int exp) {return {mantissa,exp};}
-    constexpr static Floating FromInt(std::int64_t x) {
-        // FIXME: if x is intmin, shift it
-        return {x,0};
+    constexpr static Floating FromMantissaAndExp(std::int64_t mantissa,int exp) {
+         if(mantissa==std::numeric_limits<std::int64_t>::min())
+             return {mantissa/2,exp+1};
+             else
+        return Floating{mantissa,exp}.normalize();
     }
-    constexpr std::int64_t ToInt() const {
-        //add range checks
+    constexpr static Floating FromInt(std::int64_t x) {
+        if(x==std::numeric_limits<std::int64_t>::min())
+            return {x/2,1};
+        else
+        return Floating{x,0}.normalize();
+    }
+    constexpr Floating operator-() const {
+        return FromMantissaAndExp(-mantissa,exponent);
+    }
+    //converts to int, if it can be done without loss
+    constexpr std::optional<std::int64_t> ToInt() const {
+        if(isZero())
+            return {std::int64_t{0}};
         auto ret=getAbsMantissa();
-        if(exponent<0) {
-            //needs range check
-            ret>>=exponent;
-        } else {
-            ret<<=exponent;
+
+        if(exponent<-62) {
+            // no way this could work
+            return {};
         }
-        return isNegative()?-ret:ret;
+
+        if(exponent<0) {
+            //for this to be lossless, there must be -exponent trailing zeros
+            //or more
+            const int n_trailing=notinstd::countr_zero(ret);
+            if( n_trailing< -exponent) {
+                //nope, not enough
+                return {};
+            }
+            ret>>=-exponent;
+            return isNegative()?-ret:ret;
+        }
+        if(exponent==0)
+            return isNegative()?-ret:ret;
+
+        //only chance to get a valid positive number is
+        //to have intmin which is stored as "(intmin/2)*2^1"
+        if(exponent==1 && mantissa==std::numeric_limits<std::int64_t>::min()/2) {
+            return std::numeric_limits<std::int64_t>::min();
+        }
+        //positive exponent means it is too big, because
+        //the stored number is always either all zeros (checked above)
+        //or the second most significant bit is set due to normalization.
+        return {};
     }
     static Floating FromDouble(double x) {
         //FIXME handle nan, inf, zero
@@ -61,6 +110,7 @@ struct Floating {
         return std::ldexp(mantissa,exponent);
     }
     constexpr bool isNegative() const {return mantissa<0;}
+    constexpr bool isPositive() const {return mantissa>0;}
     constexpr Rep getAbsMantissa() const { return isNegative()?-mantissa:mantissa;}
     int countLeadingZerosInMantissa() const {
         return notinstd::countl_zero(mantissa);
@@ -73,10 +123,11 @@ struct Floating {
     constexpr bool isZero() const {return mantissa==0;}
     // normalizes such that the exponent is as negative as possible,
     // meaning the bits in the mantissa are shuffled left as far as possible
-    void normalize() {
-        if(isZero()) { exponent=0; return;}
+    Floating& normalize() {
+        if(isZero()) { exponent=0; return *this;}
+        bool ispositive=mantissa>0;
         //move all bits up as far as possible
-        if(mantissa>0) {
+        if(ispositive) {
             int nzeros=notinstd::countl_zero(mantissa);
             // shift so the first bit is zero
             if(nzeros>1) {
@@ -84,16 +135,17 @@ struct Floating {
                 exponent-=nzeros-1;
             }
         } else {
-            //negative number. note, must special case intmin here to avoid ub.
+            //negative number.
             auto neg_mantissa=-mantissa;
             int nzeros=notinstd::countl_zero(neg_mantissa);
             // shift so the first bit is zero
             if(nzeros>1) {
                 neg_mantissa<<=nzeros-1;
                 exponent-=nzeros-1;
-                mantissa=neg_mantissa;
+                mantissa=-neg_mantissa;
             }
         }
+        return *this;
     }
 };
 constexpr Floating operator+(Floating a, Floating b) {
