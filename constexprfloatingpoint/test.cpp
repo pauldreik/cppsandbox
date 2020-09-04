@@ -43,7 +43,7 @@ BOOST_AUTO_TEST_CASE( construct_from_positive_powers_of_two ) {
     }
 }
 
-BOOST_AUTO_TEST_CASE( unary_minus ) {
+BOOST_AUTO_TEST_CASE( unary_minus_edgecases ) {
     using F=Floating;
     using L=std::numeric_limits<std::int64_t>;
     for(std::int64_t  i: {L::min(),
@@ -59,6 +59,26 @@ BOOST_AUTO_TEST_CASE( unary_minus ) {
                 BOOST_TEST(x.isNegative()==!negx.isNegative());
                 BOOST_TEST(x.isPositive()==!negx.isPositive());
             }
+            if(negx.ToInt().has_value() && x.ToInt().has_value()) {
+                BOOST_TEST(x.ToInt().value()==-negx.ToInt().value());
+            }
+        }
+    }
+}
+
+
+BOOST_AUTO_TEST_CASE( plus_of_small_values) {
+    auto zero=Floating::FromInt(0);
+    auto one=Floating::FromInt(1);
+    auto two=Floating::FromInt(2);
+    BOOST_TEST((zero+one).ToInt().value()==1L);
+    BOOST_TEST((one+zero).ToInt().value()==1L);
+    BOOST_TEST((one+two).ToInt().value()==3L);
+    BOOST_TEST((one+two+zero).ToInt().value()==3L);
+    BOOST_TEST((one+-one).ToInt().value()==0L);
+    for(int a=-2; a<=2; ++a) {
+        for(int b=-2; b<=2; ++b) {
+            BOOST_TEST((Floating::FromInt(a)+Floating::FromInt(b)).ToInt().value()==a+b);
         }
     }
 }

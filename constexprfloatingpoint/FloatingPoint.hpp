@@ -47,16 +47,26 @@ struct Floating {
     }
     constexpr static Floating FromMantissaAndExp(std::int64_t mantissa,int exp) {
          if(mantissa==std::numeric_limits<std::int64_t>::min())
-             return {mantissa/2,exp+1};
+             return {mantissa/2,exp+1,NoNormalizeNeeded{}};
              else
-        return Floating{mantissa,exp}.normalize();
+        return Floating{mantissa,exp};
     }
     constexpr static Floating FromInt(std::int64_t x) {
         if(x==std::numeric_limits<std::int64_t>::min())
-            return {x/2,1};
+            return {x/2,1,NoNormalizeNeeded{}};
         else
-        return Floating{x,0}.normalize();
+            return Floating{x,0};
     }
+private:
+    struct NoNormalizeNeeded{};
+    constexpr Floating(Rep mant, int exp) : mantissa(mant),exponent(exp) {
+        normalize();
+        EnsureInvariantHolds();
+    }
+    constexpr Floating(Rep mant, int exp,NoNormalizeNeeded) : mantissa(mant),exponent(exp) {
+        EnsureInvariantHolds();
+    }
+public:
     constexpr Floating operator-() const {
         return FromMantissaAndExp(-mantissa,exponent);
     }
@@ -136,6 +146,11 @@ struct Floating {
             }
         } else {
             //negative number.
+            if(mantissa==std::numeric_limits<std::int64_t>::min()) {
+                mantissa/=2;
+                exponent+=1;
+                return *this;
+            }
             auto neg_mantissa=-mantissa;
             int nzeros=notinstd::countl_zero(neg_mantissa);
             // shift so the first bit is zero
@@ -147,11 +162,52 @@ struct Floating {
         }
         return *this;
     }
+    void EnsureInvariantHolds()const {
+        // if zero, must be *all* zero
+        if(mantissa==0) {
+            assert(exponent==0);
+            return;
+        }
+        //forbidden value for nonzero
+        assert(mantissa!=std::numeric_limits<std::int64_t>::min());
+        //must not be subnormal=>has a one as second most significant bit
+        auto absmantissa=getAbsMantissa();
+        assert(absmantissa>>62==0b01L);
+    }
+    friend constexpr Floating operator+(Floating a, Floating b);
+    friend constexpr Floating operator*(Floating a, Floating b);
 };
-constexpr Floating operator+(Floating a, Floating b) {
+
+constexpr Floating operator+(const Floating a, const Floating b) {
     if(a.isZero()) return b;
     if(b.isZero()) return a;
-return a;
+
+    //which one is biggest?
+    const int asize=a.fl2a();
+    const int bsize=b.fl2a();
+
+    if(asize>=bsize) {
+        //downshift b
+        int nshift=asize-bsize;
+        if (nshift>62) {
+            //b is too small to be noticed
+            return a;
+        }
+        auto toadd=b.getAbsMantissa()>>nshift;
+        if(b.isNegative()) {
+            toadd=-toadd;
+        }
+        //play it safe
+        Floating::Rep ret=0;
+        if(__builtin_add_overflow(a.mantissa,toadd,&ret)) {
+            //overflow. scale one bit away.
+            return Floating{a.mantissa/2 + toadd/2, a.exponent+1};
+        }
+        return Floating{ret,a.exponent};
+    }
+
+    //lazy. flip the order.
+    return b+a;
 }
 /**
  * if rep is signed, this will work because any overflow has to be detected
