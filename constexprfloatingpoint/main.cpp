@@ -3,18 +3,19 @@
 #include <cstdint>
 #include <cmath>
 
-template<class Rep>
 struct Floating {
+    using Rep=std::int64_t;
     Rep mantissa;
     int exponent;
     void print() const {
         std::cout<<mantissa<<'*'<<"2^"<<exponent<<'\n';
     }
-    static Floating FromInt(std::int64_t x) {
-        // if x is intmin, shift it
+    constexpr static Floating FromInt(std::int64_t x) {
+        // FIXME: if x is intmin, shift it
         return {x,0};
     }
     static Floating FromDouble(double x) {
+        //FIXME handle nan, inf, zero
         int exp;
         double fraction=std::frexp (x, &exp );
         // |fraction| is in [0.5, 1), get it into mantissa with as many digits preserved as possible
@@ -29,10 +30,14 @@ struct Floating {
     }
 };
 
-template<class Rep>
-Floating<Rep> operator*(Floating<Rep> a, Floating<Rep> b) {
+/**
+ * if rep is signed, this will work because any overflow has to be detected
+ * by the compiler since it is prohibited in constexpr
+ */
+constexpr Floating operator*(Floating a, Floating b) {
     const int aisneg=a.mantissa<0;
     const int bisneg=b.mantissa<0;
+    using Rep=Floating::Rep;
     Rep aabs=aisneg ? -a.mantissa : a.mantissa;
     Rep babs=bisneg ? -b.mantissa : b.mantissa;
     Rep ahi=aabs>>32;
@@ -45,7 +50,7 @@ Floating<Rep> operator*(Floating<Rep> a, Floating<Rep> b) {
 }
 
 void doit(double x) {
-    auto f=Floating<std::int64_t>::FromDouble(x);
+    auto f=Floating::FromDouble(x);
     f.print();
     std::cout<<"reconstructed: "<<f.toDouble()<<'\n';
 }
@@ -53,7 +58,7 @@ void doit(double x) {
 int main()
 {
 doit(-1);
-using F=Floating<std::int64_t>;
+using F=Floating;
 auto one=F::FromInt(1);
 auto two=F::FromInt(2);
 one.print();
