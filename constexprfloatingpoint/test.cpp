@@ -131,3 +131,57 @@ BOOST_AUTO_TEST_CASE (plus_of_weird_values) {
     }
     BOOST_CHECK("all good");
 }
+
+BOOST_AUTO_TEST_CASE( multiplication_small_values) {
+    auto zero=Floating::FromInt(0);
+    auto one=Floating::FromInt(1);
+    auto two=Floating::FromInt(2);
+    BOOST_TEST((zero*one).ToInt().value()==0L);
+    BOOST_TEST((one*zero).ToInt().value()==0L);
+    BOOST_TEST((one*two).ToInt().value()==2L);
+    BOOST_TEST((one*-one).ToInt().value()==-1L);
+    for(int a=-2; a<=2; ++a) {
+        for(int b=-2; b<=2; ++b) {
+            BOOST_TEST((Floating::FromInt(a)*Floating::FromInt(b)).ToInt().value()==a*b);
+        }
+    }
+}
+
+
+BOOST_AUTO_TEST_CASE (multiplication_of_weird_values) {
+    using F=Floating;
+    using L=std::numeric_limits<std::int64_t>;
+    const auto mantissas={L::min(),
+                          L::min()+1,L::min()+2,-2L,-1L,0L,1L,2L,L::max()-2,L::max()-1,L::max()};
+    const auto exps={-129,-128,-127,-66,-65,-64,-63,-62,-61,-60,
+                     -2,-1,0,1,2,60,61,62,63,64,65,66,127,128,129};
+    const auto zero=F::FromInt(0);
+    const auto one=F::FromInt(1);
+    const auto two=F::FromInt(2);
+    for(std::int64_t i1: mantissas) {
+        for(int exp1 : exps) {
+            const auto a=F::FromMantissaAndExp(i1,exp1);
+            if(!(a==a*one)) {
+                std::abort();
+            }
+            auto apa=a+a;
+            auto twoa=two*a;
+            if(!(twoa==apa)) {
+                std::abort();
+            }
+            for(std::int64_t i2: mantissas) {
+                for(int exp2 : exps) {
+                    auto b=F::FromMantissaAndExp(i2,exp2);
+                    if(!(a*b==b*a)) {
+                        std::abort();
+                    }
+                    const auto ab=a*b;
+                    if(!(a.sign()*b.sign()==ab.sign()))
+                        std::abort();
+                    BOOST_TEST_CHECKPOINT("all good");
+                }
+            }
+        }
+    }
+    BOOST_CHECK("all good");
+}

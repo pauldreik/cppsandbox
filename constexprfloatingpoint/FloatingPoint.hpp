@@ -121,6 +121,10 @@ public:
     }
     constexpr bool isNegative() const {return mantissa<0;}
     constexpr bool isPositive() const {return mantissa>0;}
+    constexpr int sign() const {if (mantissa<0) return -1;
+        if (mantissa>0) return 1;
+        return 0;
+                               }
     constexpr Rep getAbsMantissa() const { return isNegative()?-mantissa:mantissa;}
     int countLeadingZerosInMantissa() const {
         return notinstd::countl_zero(mantissa);
@@ -204,7 +208,8 @@ constexpr Floating operator+(const Floating& a, const Floating& b) {
         Floating::Rep ret=0;
         if(__builtin_add_overflow(a.mantissa,toadd,&ret)) {
             //overflow. scale one bit away.
-            return Floating::FromMantissaAndExp(a.mantissa/2 + toadd/2, a.exponent+1);
+            auto lastbit=(a.sign()*(a.mantissa &0b1)+b.sign()*(toadd&0b1))/2;
+            return Floating::FromMantissaAndExp(a.mantissa/2 + toadd/2 + lastbit, a.exponent+1);
         }
         return Floating::FromMantissaAndExp(ret,a.exponent);
     }
@@ -217,18 +222,29 @@ constexpr Floating operator+(const Floating& a, const Floating& b) {
  * by the compiler since it is prohibited in constexpr
  */
 constexpr Floating operator*(Floating a, Floating b) {
+    if(a.isZero() || b.isZero())
+        return Floating{0,0};
     const int aisneg=a.isNegative();
     const int bisneg=b.isNegative();
     using Rep=Floating::Rep;
-    Rep aabs=aisneg ? -a.mantissa : a.mantissa;
-    Rep babs=bisneg ? -b.mantissa : b.mantissa;
+    using URep=std::make_unsigned_t<Rep>;
+    URep aabs=aisneg ? -a.mantissa : a.mantissa;
+    URep babs=bisneg ? -b.mantissa : b.mantissa;
     Rep ahi=aabs>>32;
     Rep alo=(aabs<<32)>>32;
+
     Rep bhi=babs>>32;
     Rep blo=(babs<<32)>>32;
-    Rep res=ahi*bhi+ahi*alo+alo*bhi+alo*blo;
+
+    // add in the order of small to large
+    const int sumexp=a.exponent+b.exponent;
+    Floating hihi{ahi*bhi,sumexp+64};
+    Floating hilo{ahi*blo,sumexp+32};
+    Floating lohi{alo*bhi,sumexp+32};
+    Floating lolo{alo*blo,sumexp};
+    Floating sum = hihi+(hilo+(lohi+lolo));
     const bool resultisneg= (aisneg ^ bisneg);
-    return {resultisneg?-res:res,a.exponent+b.exponent};
+    return resultisneg?-sum:sum;
 }
 
 
