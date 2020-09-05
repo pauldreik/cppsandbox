@@ -9,7 +9,7 @@
 
 namespace notinstd {
 // counts leading zeros. if x<0, counts leading zeros in -x.
-int countl_zero(std::int64_t x) {
+constexpr int countl_zero(std::int64_t x) {
     if(x==0) {
         return 64;
     }
@@ -22,7 +22,7 @@ int countl_zero(std::int64_t x) {
     // watch out for overflow here
     return countl_zero(-x);
 }
-int countr_zero(std::int64_t x) {
+constexpr int countr_zero(std::int64_t x) {
     if(x==0) {
         return 64;
     }
@@ -126,18 +126,20 @@ public:
         return 0;
                                }
     constexpr Rep getAbsMantissa() const { return isNegative()?-mantissa:mantissa;}
-    int countLeadingZerosInMantissa() const {
+    constexpr int countLeadingZerosInMantissa() const {
         return notinstd::countl_zero(mantissa);
     }
     // floor(log2(abs(*this)))
-    int fl2a() const {
-        assert(!isZero());
+    constexpr int fl2a() const {
+        if(isZero())
+            throw 10;
         return 64-countLeadingZerosInMantissa()+exponent;
     }
     constexpr bool isZero() const {return mantissa==0;}
     // normalizes such that the exponent is as negative as possible,
     // meaning the bits in the mantissa are shuffled left as far as possible
-    Floating& normalize() {
+    // without invalidating the class invariant
+    constexpr Floating& normalize() {
         if(isZero()) { exponent=0; return *this;}
         bool ispositive=mantissa>0;
         //move all bits up as far as possible
@@ -166,21 +168,24 @@ public:
         }
         return *this;
     }
-    void EnsureInvariantHolds()const {
+    constexpr void EnsureInvariantHolds()const {
         // if zero, must be *all* zero
         if(mantissa==0) {
-            assert(exponent==0);
+            if(exponent!=0)
+                throw 1;
             return;
         }
         //forbidden value for nonzero
-        assert(mantissa!=std::numeric_limits<std::int64_t>::min());
+        if(mantissa==std::numeric_limits<std::int64_t>::min())
+            throw 2;
         //must not be subnormal=>has a one as second most significant bit
         auto absmantissa=getAbsMantissa();
-        assert(absmantissa>>62==0b01L);
+        if(!(absmantissa>>62==0b01L))
+            throw 3;
     }
     friend constexpr Floating operator+(const Floating& a, const Floating& b);
     friend constexpr Floating operator*(Floating a, Floating b);
-    friend bool operator==(const Floating& a, const Floating& b) {
+    friend constexpr bool operator==(const Floating& a, const Floating& b) {
         return a.mantissa==b.mantissa && a.exponent==b.exponent;
     }
 };
@@ -241,8 +246,11 @@ constexpr Floating operator*(Floating a, Floating b) {
     Floating hihi{ahi*bhi,sumexp+64};
     Floating hilo{ahi*blo,sumexp+32};
     Floating lohi{alo*bhi,sumexp+32};
-    Floating lolo{alo*blo,sumexp};
-    Floating sum = hihi+(hilo+(lohi+lolo));
+    //we can't do alo*blo because the may both be 32 ones, which
+    // overflows when multiplied. therefore, drop precision one bit
+    // without fear, since it is truncated anyway (hihi is always big)
+    Floating lolo{alo*(blo/2),sumexp+1};
+    Floating sum = hihi+((hilo+lohi)+lolo);
     const bool resultisneg= (aisneg ^ bisneg);
     return resultisneg?-sum:sum;
 }

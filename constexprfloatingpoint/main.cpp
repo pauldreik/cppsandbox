@@ -17,9 +17,10 @@ int main()
 {
     doit(-1);
     using F=Floating;
-    auto one=F::FromInt(1);
-    auto two=F::FromInt(2);
+    constexpr auto one=F::FromInt(1);
+    constexpr auto two=F::FromInt(2);
     one.print();
     two.print();
     (one*two).print();
+    static_assert(one+two==one*two+one);
 }

@@ -172,10 +172,11 @@ BOOST_AUTO_TEST_CASE (multiplication_of_weird_values) {
             for(std::int64_t i2: mantissas) {
                 for(int exp2 : exps) {
                     auto b=F::FromMantissaAndExp(i2,exp2);
-                    if(!(a*b==b*a)) {
+                    auto ab=a*b;
+                    auto ba=b*a;
+                    if(!(ab==ba)) {
                         std::abort();
                     }
-                    const auto ab=a*b;
                     if(!(a.sign()*b.sign()==ab.sign()))
                         std::abort();
                     BOOST_TEST_CHECKPOINT("all good");
