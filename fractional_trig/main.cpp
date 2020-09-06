@@ -28,6 +28,7 @@ constexpr double mycos(std::ratio<Num,Den> x) {
     using pi_half=ratio<1,2>;
 
     constexpr bool den_is_power_of_two = ((den & (den - 1)) == 0);
+    constexpr bool den_is_multiple_of_two = (den&0b1)==0;
 
     if constexpr(num==0) {
         // cos(0)=1
@@ -37,6 +38,14 @@ constexpr double mycos(std::ratio<Num,Den> x) {
     else if constexpr(std::is_same_v<S, ratio<1,3>>) {
         // cos(pi/3)=0.5
         return 0.5;
+    }
+    else if constexpr(std::is_same_v<S, ratio<1,5>>) {
+        // cos(pi*2/5)=(sqrt(5)+1)/4
+        return (std::sqrt(5.0)+1)*0.25;
+    }
+    else if constexpr(std::is_same_v<S, ratio<2,5>>) {
+        // cos(pi*2/5)=(sqrt(5)-1)/4
+        return (std::sqrt(5.0)-1)*0.25;
     }
     else if constexpr(std::is_same_v<S, pi_half>) {
         // cos(pi/2)=0
@@ -54,10 +63,10 @@ constexpr double mycos(std::ratio<Num,Den> x) {
     }
 
     // 0<S<1/2 at this point - first quadrant!
-    else if constexpr(num==1 && den_is_power_of_two) {
-        // see if the angle is on the form pi/2^n
+    else if constexpr(num==1 && den_is_multiple_of_two) {
+        // see if the angle is on the form fi/2
         // we can use https://en.wikipedia.org/wiki/Exact_trigonometric_constants#Calculated_trigonometric_values_for_sine_and_cosine
-        constexpr auto cos_2x=mycos(ratio<2*num,den>{});
+        double cos_2x=mycos(ratio<2*num,den>{});
         return 0.5*std::sqrt(2+2*cos_2x);
     } else {
         // if we come here, more special cases are needed
@@ -103,7 +112,7 @@ int main() {
     verify(ratio<4,3>{});
     verify(ratio<4,4>{});
 
-    static_for<1,4>([](auto den){
+    static_for<1,7>([](auto den){
         static_for<-10,10>([&](auto num){
             verify(ratio<num.value,den.value>{});
         });
