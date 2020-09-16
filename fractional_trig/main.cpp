@@ -4,7 +4,12 @@
 #include <cmath>
 #include <ratio>
 #include <cassert>
+#include <numeric>
 
+/// checks if x is a multiple of m
+constexpr bool is_multiple_of(std::intmax_t m, std::intmax_t x) {
+    return std::lcm(m,x)==x;
+}
 
 // calculates cos( pi* Num/Den)
 template<std::intmax_t Num, std::intmax_t Den>
@@ -63,11 +68,15 @@ constexpr double mycos(std::ratio<Num,Den> x) {
     }
 
     // 0<S<1/2 at this point - first quadrant!
-    else if constexpr(num==1 && den_is_multiple_of_two) {
+    else if constexpr(den_is_multiple_of_two) {
         // see if the angle is on the form fi/2
         // we can use https://en.wikipedia.org/wiki/Exact_trigonometric_constants#Calculated_trigonometric_values_for_sine_and_cosine
         double cos_2x=mycos(ratio<2*num,den>{});
         return 0.5*std::sqrt(2+2*cos_2x);
+    } else if constexpr(is_multiple_of(3,den)) {
+        // use the relation cos(3x)=4cos^3 x - 3*cos x
+        double cos_xthird=mycos(ratio<num,den/3>{});
+        return cos_xthird*(4*cos_xthird*cos_xthird-3);
     } else {
         // if we come here, more special cases are needed
         throw "needs more special cases";
