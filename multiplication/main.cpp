@@ -65,6 +65,11 @@ main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
   }
   static_assert(!products_equal(4291624960, 4291493888, 0, 0));
 
+  // this example was found by my friend who asked ai, which generated
+  // code for brute forcing for a counterexample.
+  static_assert(
+    !products_equal(4294940936U, 4289265232U, 372413899U, 15529856U));
+
   static_assert(!products_equal(4291624960, 4291493888, 0, 0));
   static_assert(!products_equal(4291362816, 4291624960, 3598, 0));
   fmt::println("it works");
