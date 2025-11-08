@@ -3,25 +3,17 @@
 #include <string>
 #include <utility>
 
-namespace detail {
-template<typename T>
-concept signed_arithmetic_integer =
-  std::same_as<T, std::int8_t> || std::same_as<T, std::int16_t> ||
-  std::same_as<T, std::int32_t> || std::same_as<T, std::int64_t>;
-}
-
 /**
  * generic_abs returns the absolute value of a signed integer,
  * without invoking undefined behaviour.
  * @return the absolute value of the input, as an unsigned integer of the same
  * size as the input
  */
-template<typename T>
-  requires detail::signed_arithmetic_integer<std::decay_t<T>>
+template<std::signed_integral T>
 [[nodiscard]] constexpr auto
 generic_abs(T x)
 {
-  using U = std::make_unsigned_t<std::decay_t<T>>;
+  using U = std::make_unsigned_t<T>;
   const U tmp = x;
   // Imagine x is negative (mathematically: -v where v>0) and T is int. Then U
   // is unsigned int. By two complement rules and assuming 32 bits in this
