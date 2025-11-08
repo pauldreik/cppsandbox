@@ -1,24 +1,19 @@
 #pragma once
 
-template<unsigned M>
-constexpr unsigned
-modulo(unsigned x)
-{
-  return x % M;
-}
+#include <cstdint>
 
 /**
  * multiplies x and y modulo a_i, while avoiding
  * internal overflow
  * @return xy mod a_i
  */
-template<unsigned a_i>
-constexpr unsigned
-multiply_modulo(const unsigned x, const unsigned y)
+template<std::uint32_t a_i>
+constexpr std::uint32_t
+multiply_modulo(const std::uint32_t x, const std::uint32_t y)
 {
-  const auto xm = modulo<a_i>(x);
-  const auto ym = modulo<a_i>(y);
-  return modulo<a_i>(xm * ym);
+  const auto xm = x % a_i;
+  const auto ym = y % a_i;
+  return (xm * ym) % a_i;
 }
 
 /**
@@ -31,10 +26,10 @@ multiply_modulo(const unsigned x, const unsigned y)
  * @return
  */
 constexpr bool
-products_equal(const unsigned a,
-               const unsigned b,
-               const unsigned c,
-               const unsigned d)
+products_equal(const std::uint32_t a,
+               const std::uint32_t b,
+               const std::uint32_t c,
+               const std::uint32_t d)
 {
   // we use the chinese remainder theorem with four coefficients
 
@@ -43,23 +38,22 @@ products_equal(const unsigned a,
     return false;
   }
   // this coefficient was chosen after benchmarking
-  constexpr unsigned a_2 = 65485;
+  constexpr std::uint32_t a_2 = 65485;
   if (multiply_modulo<a_2>(a, b) != multiply_modulo<a_2>(c, d)) {
     return false;
   }
 
   // this coefficient was chosen after benchmarking
-  constexpr unsigned a_3 = 65483;
+  constexpr std::uint32_t a_3 = 65483;
   if (multiply_modulo<a_3>(a, b) != multiply_modulo<a_3>(c, d)) {
     return false;
   }
 
   // this coefficient was chosen after benchmarking
-  constexpr unsigned a_4 = 65481;
+  constexpr std::uint32_t a_4 = 65481;
   if (multiply_modulo<a_4>(a, b) != multiply_modulo<a_4>(c, d)) {
     return false;
   }
 
   return true;
-
 }

@@ -12,32 +12,30 @@ file(WRITE ${CMAKE_BINARY_DIR}/.gitignore "*")
 find_package(fmt REQUIRED)
 find_package(Catch2 REQUIRED)
 
-add_executable(nomultiplication main.cpp)
-target_link_libraries(nomultiplication PRIVATE fmt::fmt)
-target_include_directories(nomultiplication PRIVATE .)
+add_library(nomultiplication)
+target_sources(nomultiplication
+    PUBLIC
+    multiplication.h
+    PRIVATE
+    multiplication.cpp
+)
+target_include_directories(nomultiplication PUBLIC .)
 
 add_executable(benchmark_division benchmark_division.cpp)
-target_link_libraries(benchmark_division Catch2::Catch2WithMain)
+target_link_libraries(benchmark_division PRIVATE nomultiplication Catch2::Catch2WithMain)
 
 add_executable(benchmark_equality benchmark_equality.cpp)
-target_link_libraries(benchmark_equality Catch2::Catch2WithMain)
-target_include_directories(benchmark_equality PRIVATE .)
+target_link_libraries(benchmark_equality PRIVATE nomultiplication Catch2::Catch2WithMain)
+
+add_executable(test test.cpp)
+target_link_libraries(test PRIVATE nomultiplication Catch2::Catch2WithMain)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL Clang)
     add_executable(fuzzer fuzzer.cpp)
+    target_link_libraries(fuzzer PRIVATE nomultiplication)
     target_include_directories(fuzzer PRIVATE .)
     target_compile_options(fuzzer PRIVATE -fsanitize=fuzzer,address,undefined)
     target_link_options(fuzzer PRIVATE -fsanitize=fuzzer,address,undefined)
 endif  ()
 
-# sanitizers
-# target_compile_options(MYPROJECTNAME PRIVATE -fsanitize=address,undefined)
 
-# compiler warnings
-target_compile_options(nomultiplication PRIVATE -Wall -Wextra -pedantic)
-
-include(GNUInstallDirs)
-install(TARGETS nomultiplication
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
